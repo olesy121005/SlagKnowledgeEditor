@@ -74,19 +74,20 @@
 
 
             <Button
-            x:Name="SelectVerticesButton"
-            Content="Выбрать вершины"
-            Width="170"
-            Height="35"
-            Click="SelectVerticesButton_Click"/>
-
-            <Button
             x:Name="CreateRegionButton"
             Content="Настроить области"
             Width="170"
             Height="35"
             Margin="20,0,0,0"
             Click="CreateRegionButton_Click"/>
+
+            <Button
+    x:Name="SaveRegionButton"
+    Content="Сохранить область"
+    Width="170"
+    Height="35"
+    Margin="20,0,0,0"
+    Click="SaveRegionButton_Click"/>
 
         </StackPanel>
 
@@ -96,16 +97,15 @@
             BorderBrush="Gray"
             BorderThickness="1">
 
-            <Canvas 
-                x:Name="DiagramCanvas"
-                MouseLeftButtonDown="DiagramCanvas_MouseLeftButtonDown"
-                MouseMove="DiagramCanvas_MouseMove"
-                MouseLeftButtonUp="DiagramCanvas_MouseLeftButtonUp">
+            <Canvas
+    x:Name="DiagramCanvas"
+    Background="White">
 
                 <Image
-                    x:Name="DiagramImage"
-                    Stretch="Uniform"/>
-        
+        x:Name="DiagramImage"
+        Stretch="Uniform"
+        MouseMove="DiagramImage_MouseMove"
+        MouseLeftButtonDown="DiagramImage_MouseLeftButtonDown"/>
 
             </Canvas>
 

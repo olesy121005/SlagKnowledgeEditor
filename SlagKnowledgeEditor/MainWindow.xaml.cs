@@ -19,109 +19,38 @@ namespace SlagKnowledgeEditor
     /// </summary>
     public partial class MainWindow : Window
     {
-        private bool isSelectingRegion = false;
 
-        private Point startPoint;
+        private class DiagramRegion
+        {
+            public string Al2O3 { get; set; }
+            public string Temperature { get; set; }
 
-        private Rectangle selectionRectangle;
+            public Rect Region { get; set; }
+        }
 
-        private Rect selectedRegion;
+        private List<DiagramRegion> diagramRegions = new();
 
         private bool selectingVertices = false;
 
         private int vertexCount = 0;
 
         private List<Point> vertices = new();
-        private void DiagramCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (!isSelectingRegion)
-                return;
 
-
-            startPoint = e.GetPosition(DiagramCanvas);
-
-
-            selectionRectangle = new Rectangle();
-
-            selectionRectangle.Stroke = Brushes.Red;
-            selectionRectangle.StrokeThickness = 2;
-
-
-            Canvas.SetLeft(selectionRectangle, startPoint.X);
-            Canvas.SetTop(selectionRectangle, startPoint.Y);
-
-
-            DiagramCanvas.Children.Add(selectionRectangle);
-        }
-
-
-        private void DiagramCanvas_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (!isSelectingRegion)
-                return;
-
-            if (selectionRectangle == null)
-                return;
-
-
-            Point currentPoint = e.GetPosition(DiagramCanvas);
-
-
-            double width = Math.Abs(currentPoint.X - startPoint.X);
-            double height = Math.Abs(currentPoint.Y - startPoint.Y);
-
-
-            selectionRectangle.Width = width;
-            selectionRectangle.Height = height;
-
-
-            Canvas.SetLeft(
-                selectionRectangle,
-                Math.Min(currentPoint.X, startPoint.X));
-
-
-            Canvas.SetTop(
-                selectionRectangle,
-                Math.Min(currentPoint.Y, startPoint.Y));
-        }
-
-
-        private void DiagramCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (!isSelectingRegion)
-                return;
-
-
-            isSelectingRegion = false;
-
-
-            Point endPoint = e.GetPosition(DiagramCanvas);
-
-
-            double x = Math.Min(startPoint.X, endPoint.X);
-            double y = Math.Min(startPoint.Y, endPoint.Y);
-
-
-            double width = Math.Abs(endPoint.X - startPoint.X);
-            double height = Math.Abs(endPoint.Y - startPoint.Y);
-
-            selectedRegion = new Rect(
-                x,
-                y,
-                width,
-                height
-            );
-
-            StatusText.Text =
-                $"Область: X={x:F0}; Y={y:F0}; W={width:F0}; H={height:F0}";
-        }
 
         private void CreateRegionButton_Click(object sender, RoutedEventArgs e)
         {
-            isSelectingRegion = true;
+            if (DiagramImage.Source == null)
+            {
+                MessageBox.Show("Сначала откройте страницу с диаграммами.");
+                return;
+            }
+
+            vertices.Clear();
+            vertexCount = 0;
+            selectingVertices = true;
 
             StatusText.Text =
-                "Режим настройки: выделите область диаграммы мышью";
+                "Выберите 3 вершины: верхнюю левую, верхнюю правую и нижнюю левую.";
         }
         public MainWindow()
         {
@@ -147,15 +76,7 @@ namespace SlagKnowledgeEditor
                     $"Статус: Загружено {System.IO.Path.GetFileName(openFileDialog.FileName)}";
             }
         }
-        private void SelectVerticesButton_Click(object sender, RoutedEventArgs e)
-        {
-            selectingVertices = true;
-
-            vertexCount = 0;
-
-            StatusText.Text =
-                "Статус: Выберите три вершины диаграммы";
-        }
+        
         private void DiagramImage_MouseMove(object sender, MouseEventArgs e)
         {
             Point position = e.GetPosition(DiagramImage);
@@ -163,7 +84,9 @@ namespace SlagKnowledgeEditor
             MousePositionText.Text =
                 $"X: {position.X:F0}   Y: {position.Y:F0}";
         }
-        private void DiagramImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void DiagramImage_MouseLeftButtonDown(
+    object sender,
+    MouseButtonEventArgs e)
         {
             if (!selectingVertices)
                 return;
@@ -171,31 +94,136 @@ namespace SlagKnowledgeEditor
             Point position = e.GetPosition(DiagramImage);
 
             vertices.Add(position);
-            System.Windows.Shapes.Ellipse ellipse =
-    new System.Windows.Shapes.Ellipse();
 
-            ellipse.Width = 10;
-            ellipse.Height = 10;
+            Ellipse point = new Ellipse
+            {
+                Width = 10,
+                Height = 10,
+                Fill = Brushes.Red,
+                IsHitTestVisible = false
+            };
 
-            ellipse.Fill = Brushes.Red;
+            Canvas.SetLeft(point, position.X - 5);
+            Canvas.SetTop(point, position.Y - 5);
 
-            Canvas.SetLeft(ellipse, position.X - 5);
-            Canvas.SetTop(ellipse, position.Y - 5);
-
-            DiagramCanvas.Children.Add(ellipse);
+            DiagramCanvas.Children.Add(point);
 
             vertexCount++;
 
-            StatusText.Text =
-                $"Выбрано вершин: {vertexCount}/3";
-
-            if (vertexCount == 3)
+            if (vertexCount == 1)
+            {
+                StatusText.Text =
+                    "Верхняя левая выбрана. Теперь выберите верхнюю правую.";
+            }
+            else if (vertexCount == 2)
+            {
+                StatusText.Text =
+                    "Верхняя правая выбрана. Теперь выберите нижнюю левую.";
+            }
+            else if (vertexCount == 3)
             {
                 selectingVertices = false;
 
+                DrawDiagramBorder();
+
                 StatusText.Text =
-                    "Три вершины успешно выбраны.";
+                    "Границы диаграммы заданы. Нажмите «Сохранить область».";
             }
+        }
+
+        private void DrawDiagramBorder()
+        {
+            if (vertices.Count != 3)
+                return;
+
+            Point topLeft = vertices[0];
+            Point topRight = vertices[1];
+            Point bottomLeft = vertices[2];
+
+            Point bottomRight = new Point(
+                topRight.X + bottomLeft.X - topLeft.X,
+                topRight.Y + bottomLeft.Y - topLeft.Y
+            );
+
+            Polygon polygon = new Polygon
+            {
+                Stroke = Brushes.Red,
+                StrokeThickness = 2,
+                Fill = Brushes.Transparent,
+                IsHitTestVisible = false
+            };
+
+            polygon.Points.Add(topLeft);
+            polygon.Points.Add(topRight);
+            polygon.Points.Add(bottomRight);
+            polygon.Points.Add(bottomLeft);
+
+            DiagramCanvas.Children.Add(polygon);
+        }
+
+        private void SaveRegionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (vertices.Count != 3)
+            {
+                MessageBox.Show(
+                    "Сначала настройте диаграмму и выберите три вершины.");
+
+                return;
+            }
+
+            string al2o3 =
+                ((ComboBoxItem)Al2O3ComboBox.SelectedItem)
+                .Content.ToString();
+
+            string temperature =
+                ((ComboBoxItem)TemperatureComboBox.SelectedItem)
+                .Content.ToString();
+
+            Point topLeft = vertices[0];
+            Point topRight = vertices[1];
+            Point bottomLeft = vertices[2];
+
+            Point bottomRight = new Point(
+                topRight.X + bottomLeft.X - topLeft.X,
+                topRight.Y + bottomLeft.Y - topLeft.Y
+            );
+
+            StatusText.Text =
+                $"Сохранена диаграмма: Al₂O₃ {al2o3}, {temperature}°C";
+
+            MessageBox.Show(
+                $"Диаграмма сохранена.\n\n" +
+                $"Al₂O₃: {al2o3}\n" +
+                $"Температура: {temperature}°C\n\n" +
+                $"Верхняя левая: X={topLeft.X:F0}, Y={topLeft.Y:F0}\n" +
+                $"Верхняя правая: X={topRight.X:F0}, Y={topRight.Y:F0}\n" +
+                $"Нижняя левая: X={bottomLeft.X:F0}, Y={bottomLeft.Y:F0}\n" +
+                $"Нижняя правая: X={bottomRight.X:F0}, Y={bottomRight.Y:F0}"
+            );
+        }
+
+        private void ShowDiagramButton_Click(object sender, RoutedEventArgs e)
+        {
+            string al2o3 =
+                ((ComboBoxItem)Al2O3ComboBox.SelectedItem).Content.ToString();
+
+            string temperature =
+                ((ComboBoxItem)TemperatureComboBox.SelectedItem).Content.ToString();
+
+            DiagramRegion region = diagramRegions.Find(r =>
+                r.Al2O3 == al2o3 &&
+                r.Temperature == temperature);
+
+            if (region == null)
+            {
+                MessageBox.Show(
+                    $"Для Al₂O₃ {al2o3} и температуры {temperature}°C область ещё не настроена.");
+
+                return;
+            }
+
+            StatusText.Text =
+                $"Найдена диаграмма: Al₂O₃ {al2o3}, {temperature}°C";
         }
 
     }

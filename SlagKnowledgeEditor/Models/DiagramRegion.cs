@@ -2,14 +2,21 @@
 {
     public class DiagramRegion
     {
-        public string Name { get; set; } = "";
+        public int Id { get; set; }
 
-        public int X { get; set; }
+        public double Al2O3 { get; set; }
 
-        public int Y { get; set; }
+        public int Temperature { get; set; }
 
-        public int Width { get; set; }
+        public string ImagePath { get; set; } = string.Empty;
 
-        public int Height { get; set; }
+        public double TopLeftX { get; set; }
+        public double TopLeftY { get; set; }
+
+        public double TopRightX { get; set; }
+        public double TopRightY { get; set; }
+
+        public double BottomLeftX { get; set; }
+        public double BottomLeftY { get; set; }
     }
 }
