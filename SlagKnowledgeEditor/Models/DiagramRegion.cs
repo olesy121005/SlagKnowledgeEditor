@@ -18,5 +18,11 @@
 
         public double BottomLeftX { get; set; }
         public double BottomLeftY { get; set; }
+
+        public double? BottomRightX { get; set; }
+        public double? BottomRightY { get; set; }
+
+        public double? FifthX { get; set; }
+        public double? FifthY { get; set; }
     }
 }

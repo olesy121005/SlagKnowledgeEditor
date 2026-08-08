@@ -15,99 +15,165 @@
         </Grid.RowDefinitions>
 
 
-        <StackPanel Grid.Row="0"
-                Orientation="Horizontal"
-                Margin="0,0,0,10">
+        <Grid Grid.Row="0" Margin="0,0,0,10">
 
-            <Button
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+
+            <!-- ПЕРВАЯ СТРОКА -->
+            <StackPanel
+        Grid.Row="0"
+        Orientation="Horizontal">
+
+                <Button
             x:Name="OpenImageButton"
-            Content="Открыть страницу"
+            Content="Открыть диаграмму"
             Width="160"
             Height="35"
-            Margin="0,0,20,0"
+            Margin="0,0,15,5"
             Click="OpenImageButton_Click"/>
 
 
-            <StackPanel Margin="0,0,20,0">
+                <StackPanel Margin="0,0,15,5">
 
-                <TextBlock Text="Al₂O₃"
-                       FontWeight="Bold"/>
+                    <TextBlock
+                Text="Al₂O₃"
+                FontWeight="Bold"/>
 
-                <ComboBox x:Name="Al2O3ComboBox"
-                      Width="100"
-                      SelectedIndex="0">
+                    <ComboBox
+                x:Name="Al2O3ComboBox"
+                Width="100"
+                Height="25"
+                SelectedIndex="0">
 
-                    <ComboBoxItem Content="5%"/>
-                    <ComboBoxItem Content="10%"/>
-                    <ComboBoxItem Content="15%"/>
+                        <ComboBoxItem Content="5%"/>
+                        <ComboBoxItem Content="10%"/>
+                        <ComboBoxItem Content="15%"/>
 
-                </ComboBox>
+                    </ComboBox>
 
-            </StackPanel>
-
-
-            <StackPanel Margin="0,0,20,0">
-
-                <TextBlock Text="Температура"
-                       FontWeight="Bold"/>
-
-                <ComboBox x:Name="TemperatureComboBox"
-                      Width="100"
-                      SelectedIndex="0">
-
-                    <ComboBoxItem Content="1500"/>
-                    <ComboBoxItem Content="1450"/>
-                    <ComboBoxItem Content="1400"/>
-
-                </ComboBox>
-
-            </StackPanel>
+                </StackPanel>
 
 
-            <Button
+                <StackPanel Margin="0,0,15,5">
+
+                    <TextBlock
+                Text="Температура"
+                FontWeight="Bold"/>
+
+                    <ComboBox
+                x:Name="TemperatureComboBox"
+                Width="100"
+                Height="25"
+                SelectedIndex="0">
+
+                        <ComboBoxItem Content="1500"/>
+                        <ComboBoxItem Content="1450"/>
+                        <ComboBoxItem Content="1400"/>
+
+                    </ComboBox>
+
+                </StackPanel>
+
+
+                <Button
             x:Name="ShowDiagramButton"
             Content="Показать диаграмму"
             Width="170"
             Height="35"
-            Margin="0,0,20,0"
+            Margin="0,0,15,5"
             Click="ShowDiagramButton_Click"/>
 
 
-            <Button
+                <Button
             x:Name="CreateRegionButton"
             Content="Настроить области"
             Width="170"
             Height="35"
-            Margin="20,0,0,0"
+            Margin="0,0,15,5"
             Click="CreateRegionButton_Click"/>
 
-            <Button
-    x:Name="SaveRegionButton"
-    Content="Сохранить область"
-    Width="170"
-    Height="35"
-    Margin="20,0,0,0"
-    Click="SaveRegionButton_Click"/>
+            </StackPanel>
 
-        </StackPanel>
+
+            <!-- ВТОРАЯ СТРОКА -->
+            <StackPanel
+        Grid.Row="1"
+        Orientation="Horizontal">
+
+                <Button
+            x:Name="SaveRegionButton"
+            Content="Сохранить область"
+            Width="170"
+            Height="35"
+            Margin="0,5,15,0"
+            Click="SaveRegionButton_Click"/>
+
+
+                <Button
+            x:Name="DetermineCompositionButton"
+            Content="Определить состав"
+            Width="170"
+            Height="35"
+            Margin="0,5,15,0"
+            Click="DetermineCompositionButton_Click"/>
+
+
+                <Button
+            x:Name="StartCalibrationButton"
+            Content="Калибровать диаграмму"
+            Width="170"
+            Height="35"
+            Margin="0,5,15,0"
+            Click="StartCalibrationButton_Click"/>
+
+
+                <Button
+            x:Name="ClearCalibrationButton"
+            Content="Очистить калибровку"
+            Width="170"
+            Height="35"
+            Margin="0,5,15,0"
+            Click="ClearCalibrationButton_Click"/>
+
+            </StackPanel>
+
+        </Grid>
 
 
         <Border
-            Grid.Row="1"
-            BorderBrush="Gray"
-            BorderThickness="1">
-
-            <Canvas
-    x:Name="DiagramCanvas"
+    Grid.Row="1"
+    BorderBrush="Gray"
+    BorderThickness="1"
     Background="White">
 
-                <Image
-        x:Name="DiagramImage"
-        Stretch="Uniform"
-        MouseMove="DiagramImage_MouseMove"
-        MouseLeftButtonDown="DiagramImage_MouseLeftButtonDown"/>
+            <Viewbox
+        x:Name="DiagramViewbox"
+        Stretch="Uniform">
 
-            </Canvas>
+                <Grid
+            x:Name="DiagramContainer">
+
+                    <Image
+    x:Name="DiagramImage"
+    Stretch="None"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Top"
+    Margin="20"
+    MouseMove="DiagramImage_MouseMove"
+    PreviewMouseLeftButtonDown="DiagramImage_MouseLeftButtonDown"/>
+
+                    <Canvas
+                x:Name="DiagramCanvas"
+                Background="Transparent"
+                IsHitTestVisible="False"/>
+
+                </Grid>
+
+            </Viewbox>
 
         </Border>
 
