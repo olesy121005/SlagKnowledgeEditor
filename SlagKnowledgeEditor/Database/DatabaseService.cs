@@ -60,27 +60,27 @@ namespace SlagKnowledgeEditor.Database
             ";
 
             string calibrationSql = @"
-    CREATE TABLE IF NOT EXISTS CompositionCalibrationPoints
-    (
-        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE IF NOT EXISTS CompositionCalibrationPoints
+(
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        Al2O3 REAL NOT NULL,
-        Temperature INTEGER NOT NULL,
+    Al2O3 REAL NOT NULL,
+    Temperature INTEGER NOT NULL,
 
-        X REAL NOT NULL,
-        Y REAL NOT NULL,
+    X REAL NOT NULL,
+    Y REAL NOT NULL,
 
-        CaO REAL NOT NULL,
-        MgO REAL NOT NULL,
-        SiO2 REAL NOT NULL,
+    CaO REAL NOT NULL,
+    MgO REAL NOT NULL,
+    SiO2 REAL NOT NULL,
 
-        UNIQUE(
-            Al2O3,
-            Temperature,
-            X,
-            Y
-        )
-    );
+    UNIQUE(
+        Al2O3,
+        Temperature,
+        X,
+        Y
+    )
+);
 ";
 
             using SqliteCommand calibrationCommand =
@@ -89,6 +89,40 @@ namespace SlagKnowledgeEditor.Database
                     connection);
 
             calibrationCommand.ExecuteNonQuery();
+
+
+            // ============================================================
+            // ТАБЛИЦА КАЛИБРОВКИ ВЯЗКОСТИ
+            // ============================================================
+
+            string viscositySql = @"
+CREATE TABLE IF NOT EXISTS ViscosityCalibrationPoints
+(
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    Al2O3 REAL NOT NULL,
+    Temperature INTEGER NOT NULL,
+
+    X REAL NOT NULL,
+    Y REAL NOT NULL,
+
+    Viscosity REAL NOT NULL,
+
+    UNIQUE(
+        Al2O3,
+        Temperature,
+        X,
+        Y
+    )
+);
+";
+
+            using SqliteCommand viscosityCommand =
+                new SqliteCommand(
+                    viscositySql,
+                    connection);
+
+            viscosityCommand.ExecuteNonQuery();
 
             using SqliteCommand command =
                 new SqliteCommand(sql, connection);
@@ -115,7 +149,66 @@ namespace SlagKnowledgeEditor.Database
                 "FifthY");
         }
 
+        public void SaveViscosityCalibrationPoint(
+    ViscosityCalibrationPoint point)
+        {
+            using SqliteConnection connection =
+                new SqliteConnection(connectionString);
 
+            connection.Open();
+
+            string sql = @"
+INSERT INTO ViscosityCalibrationPoints
+(
+    Al2O3,
+    Temperature,
+    X,
+    Y,
+    Viscosity
+)
+VALUES
+(
+    @Al2O3,
+    @Temperature,
+    @X,
+    @Y,
+    @Viscosity
+)
+ON CONFLICT(
+    Al2O3,
+    Temperature,
+    X,
+    Y
+)
+DO UPDATE SET
+    Viscosity = excluded.Viscosity;
+";
+
+            using SqliteCommand command =
+                new SqliteCommand(sql, connection);
+
+            command.Parameters.AddWithValue(
+                "@Al2O3",
+                point.Al2O3);
+
+            command.Parameters.AddWithValue(
+                "@Temperature",
+                point.Temperature);
+
+            command.Parameters.AddWithValue(
+                "@X",
+                point.ImagePoint.X);
+
+            command.Parameters.AddWithValue(
+                "@Y",
+                point.ImagePoint.Y);
+
+            command.Parameters.AddWithValue(
+                "@Viscosity",
+                point.Viscosity);
+
+            command.ExecuteNonQuery();
+        }
         private void AddColumnIfNotExists(
             SqliteConnection connection,
             string columnName)
@@ -156,6 +249,71 @@ namespace SlagKnowledgeEditor.Database
 
                 alterCommand.ExecuteNonQuery();
             }
+        }
+
+        public List<ViscosityCalibrationPoint>
+    GetViscosityCalibrationPoints(
+        double al2o3,
+        int temperature)
+        {
+            List<ViscosityCalibrationPoint> points =
+                new();
+
+            using SqliteConnection connection =
+                new SqliteConnection(connectionString);
+
+            connection.Open();
+
+            string sql = @"
+SELECT
+    Id,
+    Al2O3,
+    Temperature,
+    X,
+    Y,
+    Viscosity
+FROM ViscosityCalibrationPoints
+WHERE Al2O3 = @Al2O3
+  AND Temperature = @Temperature
+ORDER BY Viscosity;
+";
+
+            using SqliteCommand command =
+                new SqliteCommand(sql, connection);
+
+            command.Parameters.AddWithValue(
+                "@Al2O3",
+                al2o3);
+
+            command.Parameters.AddWithValue(
+                "@Temperature",
+                temperature);
+
+            using SqliteDataReader reader =
+                command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                points.Add(
+                    new ViscosityCalibrationPoint
+                    {
+                        Id = reader.GetInt32(0),
+
+                        Al2O3 = reader.GetDouble(1),
+
+                        Temperature = reader.GetInt32(2),
+
+                        ImagePoint =
+                            new Point(
+                                reader.GetDouble(3),
+                                reader.GetDouble(4)),
+
+                        Viscosity =
+                            reader.GetDouble(5)
+                    });
+            }
+
+            return points;
         }
 
 

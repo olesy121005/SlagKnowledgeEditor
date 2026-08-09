@@ -25,6 +25,13 @@ namespace SlagKnowledgeEditor
 
         private bool calibrating = false;
 
+        private bool calibratingViscosity = false;
+
+        private int viscosityPointNumber = 0;
+
+        private List<ViscosityCalibrationPoint>
+            viscosityCalibrationPoints = new();
+
         private int calibrationPointNumber = 0;
 
         private List<CompositionCalibrationPoint>
@@ -46,12 +53,65 @@ namespace SlagKnowledgeEditor
 
         private const int RequiredCalibrationPoints = 9;
 
+
         public MainWindow()
         {
             InitializeComponent();
 
             databaseService = new DatabaseService();
             compositionCalculator = new CompositionCalculator();
+        }
+
+        private void StartViscosityCalibrationButton_Click(
+    object sender,
+    RoutedEventArgs e)
+        {
+            if (DiagramImage.Source == null)
+            {
+                MessageBox.Show(
+                    "Сначала загрузите диаграмму.");
+
+                return;
+            }
+
+            if (Al2O3ComboBox.SelectedItem == null ||
+                TemperatureComboBox.SelectedItem == null)
+            {
+                MessageBox.Show(
+                    "Выберите Al₂O₃ и температуру.");
+
+                return;
+            }
+
+            string al2o3Text =
+                ((ComboBoxItem)Al2O3ComboBox.SelectedItem)
+                .Content.ToString()!;
+
+            string temperatureText =
+                ((ComboBoxItem)TemperatureComboBox.SelectedItem)
+                .Content.ToString()!;
+
+            double al2o3 =
+                double.Parse(
+                    al2o3Text.Replace("%", ""));
+
+            int temperature =
+                int.Parse(temperatureText);
+
+            calibratingViscosity = true;
+
+            viscosityPointNumber = 0;
+
+            viscosityCalibrationPoints.Clear();
+
+            determiningComposition = false;
+            selectingCompositionPoint = false;
+            calibrating = false;
+
+            StatusText.Text =
+                $"Калибровка изолинии вязкости: " +
+                $"{al2o3}% / {temperature}°C. " +
+                "Кликните по точке изолинии.";
         }
 
         private void DetermineCompositionButton_Click(
@@ -345,16 +405,145 @@ namespace SlagKnowledgeEditor
     object sender,
     MouseButtonEventArgs e)
         {
+            // =========================================================
+            // КАЛИБРОВКА ВЯЗКОСТИ
+            // =========================================================
+
+            if (calibratingViscosity)
+            {
+                Point viscosityPosition =
+                    e.GetPosition(DiagramImage);
+
+                string input =
+                    Microsoft.VisualBasic.Interaction.InputBox(
+                        "Введите значение вязкости для этой точки:",
+                        "Калибровка вязкости",
+                        "");
+
+                if (string.IsNullOrWhiteSpace(input))
+                    return;
+
+                if (!double.TryParse(
+                        input.Replace(',', '.'),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out double viscosity))
+                {
+                    MessageBox.Show(
+                        "Введите корректное числовое значение.");
+
+                    return;
+                }
+
+                if (Al2O3ComboBox.SelectedItem == null ||
+                    TemperatureComboBox.SelectedItem == null)
+                {
+                    MessageBox.Show(
+                        "Выберите Al₂O₃ и температуру.");
+
+                    calibratingViscosity = false;
+
+                    return;
+                }
+
+                string al2o3Text =
+                    ((ComboBoxItem)Al2O3ComboBox.SelectedItem)
+                    .Content.ToString()!;
+
+                string temperatureText =
+                    ((ComboBoxItem)TemperatureComboBox.SelectedItem)
+                    .Content.ToString()!;
+
+                double al2o3 =
+                    double.Parse(
+                        al2o3Text.Replace("%", ""));
+
+                int temperature =
+                    int.Parse(temperatureText);
+
+                ViscosityCalibrationPoint calibrationPoint =
+                    new ViscosityCalibrationPoint
+                    {
+                        Al2O3 = al2o3,
+                        Temperature = temperature,
+
+                        // Координаты именно изображения
+                        ImagePoint = viscosityPosition,
+
+                        Viscosity = viscosity
+                    };
+
+                databaseService.SaveViscosityCalibrationPoint(
+                    calibrationPoint);
+
+                viscosityCalibrationPoints.Add(
+                    calibrationPoint);
+
+                // ---------------------------------------------------------
+                // Рисуем точку на Canvas
+                // ---------------------------------------------------------
+
+                Ellipse point =
+                    new Ellipse
+                    {
+                        Width = 10,
+                        Height = 10,
+                        Fill = Brushes.Blue,
+                        Stroke = Brushes.White,
+                        StrokeThickness = 2,
+                        IsHitTestVisible = false
+                    };
+
+                Point canvasPosition =
+                    DiagramImage.TranslatePoint(
+                        viscosityPosition,
+                        DiagramCanvas);
+
+                Canvas.SetLeft(
+                    point,
+                    canvasPosition.X - 5);
+
+                Canvas.SetTop(
+                    point,
+                    canvasPosition.Y - 5);
+
+                DiagramCanvas.Children.Add(point);
+
+                viscosityPointNumber++;
+
+                StatusText.Text =
+                    $"Точка изолинии №{viscosityPointNumber} сохранена. " +
+                    $"Вязкость: {viscosity:g}";
+
+                e.Handled = true;
+
+                return;
+            }
+
+
+            // =========================================================
+            // ОБЫЧНАЯ КАЛИБРОВКА СОСТАВА
+            // =========================================================
+
             if (calibrating)
             {
                 HandleCalibrationClick(e);
                 return;
             }
 
-            // Во всех режимах используем координаты относительно самого Image.
-            Point position = GetImagePoint(e);
 
-            // Режим определения состава
+            // =========================================================
+            // КООРДИНАТЫ ОТНОСИТЕЛЬНО ИЗОБРАЖЕНИЯ
+            // =========================================================
+
+            Point position =
+                e.GetPosition(DiagramImage);
+
+
+            // =========================================================
+            // ОПРЕДЕЛЕНИЕ СОСТАВА
+            // =========================================================
+
             if (determiningComposition)
             {
                 selectedCompositionPoint = position;
@@ -370,7 +559,11 @@ namespace SlagKnowledgeEditor
                 return;
             }
 
-            // Режим настройки области
+
+            // =========================================================
+            // НАСТРОЙКА ОБЛАСТИ ДИАГРАММЫ
+            // =========================================================
+
             if (!selectingVertices)
                 return;
 
@@ -383,8 +576,9 @@ namespace SlagKnowledgeEditor
             if (vertexCount < requiredVertexCount)
             {
                 StatusText.Text =
-                    $"Выбрано {vertexCount} из {requiredVertexCount}. " +
-                    $"Выберите следующую точку.";
+                    $"Выбрано {vertexCount} из " +
+                    $"{requiredVertexCount}. " +
+                    "Выберите следующую точку.";
             }
             else
             {
@@ -401,8 +595,7 @@ namespace SlagKnowledgeEditor
         private void HandleCalibrationClick(
     MouseButtonEventArgs e)
         {
-            Point position =
-                e.GetPosition(DiagramImage);
+            Point position = e.GetPosition(DiagramImage);
 
             if (Al2O3ComboBox.SelectedItem == null ||
                 TemperatureComboBox.SelectedItem == null)
@@ -430,11 +623,17 @@ namespace SlagKnowledgeEditor
             int temperature =
                 int.Parse(temperatureText);
 
+
+            // ---------------------------------------------------------
+            // Ввод состава калибровочной точки
+            // ---------------------------------------------------------
+
             double? caO = AskCompositionValue(
                 "Введите содержание CaO, %:");
 
             if (!caO.HasValue)
                 return;
+
 
             double? mgO = AskCompositionValue(
                 "Введите содержание MgO, %:");
@@ -442,17 +641,20 @@ namespace SlagKnowledgeEditor
             if (!mgO.HasValue)
                 return;
 
+
             double? siO2 = AskCompositionValue(
                 "Введите содержание SiO₂, %:");
 
             if (!siO2.HasValue)
                 return;
 
+
             double sum =
                 al2o3 +
                 caO.Value +
                 mgO.Value +
                 siO2.Value;
+
 
             if (Math.Abs(sum - 100.0) > 0.01)
             {
@@ -463,7 +665,12 @@ namespace SlagKnowledgeEditor
                 return;
             }
 
-            CompositionCalibrationPoint point =
+
+            // ---------------------------------------------------------
+            // Создаём калибровочную точку
+            // ---------------------------------------------------------
+
+            CompositionCalibrationPoint calibrationPoint =
                 new CompositionCalibrationPoint
                 {
                     Al2O3 = al2o3,
@@ -479,32 +686,50 @@ namespace SlagKnowledgeEditor
                     SiO2 = siO2.Value
                 };
 
-            calibrationPoints.Add(point);
 
-            databaseService.SaveCalibrationPoint(point);
+            // ---------------------------------------------------------
+            // Сохраняем
+            // ---------------------------------------------------------
+
+            calibrationPoints.Add(calibrationPoint);
+
+            databaseService.SaveCalibrationPoint(
+                calibrationPoint);
 
             DrawCalibrationPoint(position);
 
             calibrationPointNumber++;
 
+
+            // ---------------------------------------------------------
+            // Переходим к следующей точке
+            // ---------------------------------------------------------
+
             if (calibrationPointNumber < RequiredCalibrationPoints)
             {
                 StatusText.Text =
-                    $"Калибровочная точка {calibrationPointNumber} сохранена. " +
-                    $"Выберите точку №{calibrationPointNumber + 1}.";
+                    $"Калибровочная точка " +
+                    $"{calibrationPointNumber} из " +
+                    $"{RequiredCalibrationPoints} сохранена.\n" +
+                    $"Выберите точку №" +
+                    $"{calibrationPointNumber + 1}.";
             }
             else
             {
                 calibrating = false;
 
                 StatusText.Text =
-                    $"Калибровка {al2o3}% / {temperature}°C завершена.";
+                    $"Калибровка {al2o3}% / " +
+                    $"{temperature}°C завершена. " +
+                    $"Сохранено {RequiredCalibrationPoints} точек.";
 
                 MessageBox.Show(
-                    "Калибровка диаграммы завершена.\n\n" +
+                    $"Калибровка диаграммы завершена.\n\n" +
                     $"Сохранено {RequiredCalibrationPoints} калибровочных точек.");
             }
         }
+
+
 
         private double? AskCompositionValue(
     string message)
@@ -783,7 +1008,7 @@ namespace SlagKnowledgeEditor
                         temperature);
 
 
-            if (calibrationPoints.Count < 4)
+            if (calibrationPoints.Count < RequiredCalibrationPoints)
             {
                 MessageBox.Show(
                     $"Для этой диаграммы сохранено " +

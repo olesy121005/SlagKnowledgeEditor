@@ -139,6 +139,11 @@
             Margin="0,5,15,0"
             Click="ClearCalibrationButton_Click"/>
 
+                <Button
+    Content="Калибровка вязкости"
+    Click="StartViscosityCalibrationButton_Click"
+    Margin="5"/>
+
             </StackPanel>
 
         </Grid>
